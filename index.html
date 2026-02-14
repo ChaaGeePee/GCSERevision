@@ -1148,9 +1148,9 @@
 
         async function loadUserProfile() {
             try {
-                // First try by user_id
+                // First try by user_id in user_profiles table
                 let { data, error } = await supabaseClient
-                    .from('users')
+                    .from('user_profiles')
                     .select('*')
                     .eq('user_id', USER_ID)
                     .single();
@@ -1159,7 +1159,7 @@
                 if (error && error.code === 'PGRST116') {
                     console.log('ℹ️ No profile found by user_id, trying email...');
                     const emailResult = await supabaseClient
-                        .from('users')
+                        .from('user_profiles')
                         .select('*')
                         .eq('email', currentUser.email)
                         .single();
@@ -1177,7 +1177,7 @@
                         console.log('✅ Found profile by email, updating user_id...');
                         
                         await supabaseClient
-                            .from('users')
+                            .from('user_profiles')
                             .update({ user_id: USER_ID })
                             .eq('email', currentUser.email);
                         
@@ -1229,7 +1229,7 @@
 
             try {
                 const { data, error } = await supabaseClient
-                    .from('users')
+                    .from('user_profiles')
                     .insert({
                         user_id: USER_ID,
                         email: currentUser.email,
@@ -1511,7 +1511,7 @@
 
             try {
                 const { data, error } = await supabaseClient
-                    .from('users')
+                    .from('user_profiles')
                     .select('email, role')
                     .eq('family_id', FAMILY_ID)
                     .order('email');
