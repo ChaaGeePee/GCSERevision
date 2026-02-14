@@ -1361,10 +1361,14 @@
             }
 
             try {
+                // Strip 'fam-' prefix if it exists to match progress table format
+                const progressFamilyId = FAMILY_ID.replace(/^fam-/, '');
+                console.log('Loading progress with family_id:', progressFamilyId);
+                
                 const { data, error } = await supabaseClient
                     .from('progress')
                     .select('*')
-                    .eq('family_id', FAMILY_ID);
+                    .eq('family_id', progressFamilyId);
 
                 if (error) throw error;
 
@@ -1382,7 +1386,7 @@
                     };
                 });
 
-                console.log('✅ Progress data loaded from cloud');
+                console.log('✅ Progress data loaded from cloud:', Object.keys(progressData));
                 renderTopics();
             } catch (error) {
                 console.error('❌ Failed to load progress data:', error);
@@ -1412,10 +1416,13 @@
 
             if (FAMILY_ID && supabaseClient) {
                 try {
+                    // Strip 'fam-' prefix if it exists to match progress table format
+                    const progressFamilyId = FAMILY_ID.replace(/^fam-/, '');
+                    
                     const { error } = await supabaseClient
                         .from('progress')
                         .upsert({
-                            family_id: FAMILY_ID,
+                            family_id: progressFamilyId,
                             user_id: USER_ID,
                             subject: subjectId,
                             topic_key: key,
@@ -1476,10 +1483,13 @@
             // Save to progress table
             if (FAMILY_ID && supabaseClient) {
                 try {
+                    // Strip 'fam-' prefix if it exists to match progress table format
+                    const progressFamilyId = FAMILY_ID.replace(/^fam-/, '');
+                    
                     const { error } = await supabaseClient
                         .from('progress')
                         .upsert({
-                            family_id: FAMILY_ID,
+                            family_id: progressFamilyId,
                             user_id: USER_ID,
                             subject: subjectId,
                             topic_key: key,
