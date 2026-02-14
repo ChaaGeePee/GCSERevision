@@ -968,8 +968,8 @@
 
     <script>
         // ============= SUPABASE CONFIGURATION =============
-        const SUPABASE_URL = 'https://hpflilrxmsrpqynmenmk.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwZmxpbHJ4bXNycHF5bm1lbm1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MTIzNTQsImV4cCI6MjA4NjM4ODM1NH0.Yt_NyIO2xQLYTq274KzYbon_NsTR4A_rV8L2_-CoKBY';
+        const SUPABASE_URL = 'https://bvjucunvwrnjfhspxugo.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2anVjdW52d3JuamZoc3B4dWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgwNjI3OTksImV4cCI6MjA1MzYzODc5OX0.i9Xmr6IkL7MXm3qZQPZyKgUCFqQqQNjc1lSbOPsK_xE';
         
         let supabaseClient = null;
         let currentUser = null;
@@ -985,11 +985,17 @@
 
         function initSupabase() {
             try {
+                console.log('Attempting to connect to Supabase...');
+                console.log('URL:', SUPABASE_URL);
+                console.log('Key (first 20 chars):', SUPABASE_ANON_KEY.substring(0, 20) + '...');
+                
                 supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 console.log('✅ Supabase client initialized successfully');
                 return true;
             } catch (error) {
                 console.error('❌ Failed to initialize Supabase:', error);
+                console.error('Error details:', error.message);
+                alert('Failed to initialize Supabase: ' + error.message);
                 return false;
             }
         }
@@ -1102,7 +1108,17 @@
 
         async function checkAuth() {
             try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
+                console.log('Checking authentication...');
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                
+                if (error) {
+                    console.error('❌ Auth session error:', error);
+                    console.error('Error message:', error.message);
+                    console.error('Error status:', error.status);
+                    alert('Authentication error: ' + error.message + '\n\nPlease check browser console (F12) for details.');
+                    showLogin();
+                    return;
+                }
                 
                 if (session) {
                     currentUser = session.user;
@@ -1118,26 +1134,60 @@
                 }
             } catch (error) {
                 console.error('❌ Auth check failed:', error);
+                console.error('Error type:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Full error:', error);
+                
+                const errorMessage = document.getElementById('errorMessage');
+                errorMessage.textContent = `Connection error: ${error.message}. Please check:\n1. Is your internet working?\n2. Is Supabase project active?\n3. Check browser console (F12) for details.`;
+                errorMessage.classList.add('show');
+                
                 showLogin();
             }
         }
 
         async function loadUserProfile() {
             try {
-                const { data, error } = await supabaseClient
+                // First try by user_id
+                let { data, error } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('user_id', USER_ID)
                     .single();
 
-                if (error) {
-                    if (error.code === 'PGRST116') {
-                        console.log('ℹ️ No profile found, creating one...');
-                        await createUserProfile();
+                // If not found by user_id, try by email
+                if (error && error.code === 'PGRST116') {
+                    console.log('ℹ️ No profile found by user_id, trying email...');
+                    const emailResult = await supabaseClient
+                        .from('users')
+                        .select('*')
+                        .eq('email', currentUser.email)
+                        .single();
+                    
+                    if (emailResult.error) {
+                        if (emailResult.error.code === 'PGRST116') {
+                            console.log('ℹ️ No profile found by email either, creating one...');
+                            await createUserProfile();
+                        } else {
+                            throw emailResult.error;
+                        }
                     } else {
-                        throw error;
+                        // Found by email! Update the user_id to the new one
+                        data = emailResult.data;
+                        console.log('✅ Found profile by email, updating user_id...');
+                        
+                        await supabaseClient
+                            .from('users')
+                            .update({ user_id: USER_ID })
+                            .eq('email', currentUser.email);
+                        
+                        console.log('✅ Updated user_id in database');
                     }
-                } else {
+                } else if (error) {
+                    throw error;
+                }
+
+                if (data) {
                     userProfile = data;
                     FAMILY_ID = data.family_id;
                     console.log('✅ User profile loaded:', userProfile);
@@ -1290,7 +1340,15 @@
             document.getElementById('userEmail').textContent = currentUser.email;
             document.getElementById('userRole').textContent = `Role: ${userProfile?.role || 'Unknown'} | Family ID: ${FAMILY_ID || 'None'}`;
             
-            init();
+            // Check if profile is incomplete
+            if (!FAMILY_ID || !userProfile) {
+                setTimeout(() => {
+                    alert('⚠️ Your profile is incomplete!\n\nYou need to set up your Family ID and role before you can use the tracker.\n\nClick OK to set up now.');
+                    manualProfileSetup();
+                }, 500);
+            } else {
+                init();
+            }
         }
 
         // ============= DATA MANAGEMENT =============
