@@ -1125,11 +1125,7 @@
                     
                     if (checkError || !allowedUser) {
                         console.warn('Unauthorized email attempted access:', userEmail);
-                        alert('⛔ Access Denied
-
-Your email is not authorized to use this application.
-
-Only authorized family members can access this tracker.');
+                        alert('⛔ Access Denied\n\nYour email is not authorized to use this application.\n\nOnly authorized family members can access this tracker.');
                         await supabaseClient.auth.signOut();
                         showLogin();
                         return;
