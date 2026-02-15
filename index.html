@@ -2166,39 +2166,219 @@
             });
         }
 
-        function renderAnalytics() {
-            const stats = calculateOverallStats();
+        async function renderAnalytics() {
             const content = document.getElementById('analyticsContent');
             
-            let html = `
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.totalTopics}</div>
-                        <div class="stat-label">Total Topics</div>
+            // Show loading state
+            content.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">Loading analytics data...</div>';
+            
+            try {
+                // Get list of users in this family
+                const { data: users, error: usersError } = await supabaseClient
+                    .from('user_profiles')
+                    .select('email, role')
+                    .eq('family_id', FAMILY_ID);
+                
+                if (usersError) throw usersError;
+                
+                if (!users || users.length === 0) {
+                    content.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No users found</div>';
+                    return;
+                }
+                
+                // Create user selector and analytics content
+                let html = `
+                    <div style="margin-bottom: 30px;">
+                        <label for="analyticsUserSelect" style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;">
+                            Select User to View Analytics:
+                        </label>
+                        <select id="analyticsUserSelect" onchange="loadUserAnalytics(this.value)" style="
+                            width: 100%;
+                            max-width: 400px;
+                            padding: 12px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 8px;
+                            font-size: 16px;
+                            background: white;
+                            cursor: pointer;
+                        ">
+                            <option value="">-- Select a user --</option>
+                            ${users.map(user => `
+                                <option value="${user.email}">${user.email} (${user.role})</option>
+                            `).join('')}
+                        </select>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.percentage}%</div>
-                        <div class="stat-label">Overall Progress</div>
+                    
+                    <div id="userAnalyticsContent" style="display: none;">
+                        <!-- User-specific analytics will be loaded here -->
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${formatMinutes(stats.totalMinutes)}</div>
-                        <div class="stat-label">Total Study Time</div>
+                `;
+                
+                content.innerHTML = html;
+                
+                // Auto-select current user if they're in the list
+                const select = document.getElementById('analyticsUserSelect');
+                if (currentUser && users.find(u => u.email === currentUser.email)) {
+                    select.value = currentUser.email;
+                    await loadUserAnalytics(currentUser.email);
+                }
+                
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                content.innerHTML = `
+                    <div style="background: #fee; color: #c00; padding: 20px; border-radius: 10px;">
+                        <strong>Error loading analytics:</strong> ${error.message}
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.notStarted}</div>
-                        <div class="stat-label">Topics Remaining</div>
-                    </div>
-                </div>
+                `;
+            }
+        }
 
-                <div class="progress-chart">
-                    <div class="chart-title">📚 Your Strengths</div>
-                    ${generateStrengths()}
-                </div>
-
-                ${generateRecommendations(stats)}
-            `;
-
-            content.innerHTML = html;
+        async function loadUserAnalytics(email) {
+            if (!email) {
+                document.getElementById('userAnalyticsContent').style.display = 'none';
+                return;
+            }
+            
+            const container = document.getElementById('userAnalyticsContent');
+            container.style.display = 'block';
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">Loading...</div>';
+            
+            try {
+                // Load session data
+                const { data: sessions, error: sessionsError } = await supabaseClient
+                    .from('user_sessions')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('family_id', FAMILY_ID)
+                    .order('login_time', { ascending: false })
+                    .limit(20);
+                
+                if (sessionsError) throw sessionsError;
+                
+                // Load topic time data
+                const { data: topicTime, error: topicTimeError } = await supabaseClient
+                    .from('topic_time_tracking')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('family_id', FAMILY_ID)
+                    .order('tracked_at', { ascending: false });
+                
+                if (topicTimeError) throw topicTimeError;
+                
+                // Calculate stats
+                const totalSessions = sessions.length;
+                const totalMinutes = topicTime.reduce((sum, t) => sum + (t.minutes_spent || 0), 0);
+                
+                // Calculate average session duration
+                let avgSessionMinutes = 0;
+                if (sessions.length > 0) {
+                    const completedSessions = sessions.filter(s => s.logout_time);
+                    if (completedSessions.length > 0) {
+                        const totalSessionTime = completedSessions.reduce((sum, s) => {
+                            const login = new Date(s.login_time);
+                            const logout = new Date(s.logout_time);
+                            return sum + (logout - login);
+                        }, 0);
+                        avgSessionMinutes = Math.round(totalSessionTime / completedSessions.length / 60000);
+                    }
+                }
+                
+                // Aggregate time by topic
+                const timeByTopic = {};
+                topicTime.forEach(t => {
+                    const key = `${t.subject} > ${t.section} > ${t.topic}`;
+                    if (!timeByTopic[key]) {
+                        timeByTopic[key] = 0;
+                    }
+                    timeByTopic[key] += t.minutes_spent;
+                });
+                
+                // Sort topics by time spent
+                const sortedTopics = Object.entries(timeByTopic)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+                
+                // Render analytics
+                let html = `
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                        <div class="stat-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: bold; color: #667eea;">${totalSessions}</div>
+                            <div style="color: #666; margin-top: 5px;">Total Sessions</div>
+                        </div>
+                        <div class="stat-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: bold; color: #28a745;">${formatMinutes(totalMinutes)}</div>
+                            <div style="color: #666; margin-top: 5px;">Study Time</div>
+                        </div>
+                        <div class="stat-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: bold; color: #ff9800;">${avgSessionMinutes}</div>
+                            <div style="color: #666; margin-top: 5px;">Avg Session (min)</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px;">
+                        <h3 style="color: #667eea; margin-bottom: 20px;">📅 Recent Login Sessions</h3>
+                        ${sessions.length === 0 ? 
+                            '<p style="text-align: center; color: #999; padding: 20px;">No sessions recorded yet. Sessions are tracked from deployment onwards.</p>' :
+                            `<div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #495057;">Login Time</th>
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #495057;">Logout Time</th>
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #495057;">Duration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${sessions.map(session => {
+                                            const loginTime = new Date(session.login_time).toLocaleString();
+                                            const logoutTime = session.logout_time ? new Date(session.logout_time).toLocaleString() : 'Still active';
+                                            let duration = '---';
+                                            if (session.logout_time) {
+                                                const login = new Date(session.login_time);
+                                                const logout = new Date(session.logout_time);
+                                                const minutes = Math.round((logout - login) / 60000);
+                                                duration = formatMinutes(minutes);
+                                            }
+                                            return `
+                                                <tr style="border-bottom: 1px solid #dee2e6;">
+                                                    <td style="padding: 12px; color: #495057;">${loginTime}</td>
+                                                    <td style="padding: 12px; color: #495057;">${logoutTime}</td>
+                                                    <td style="padding: 12px; color: #495057; font-weight: 600;">${duration}</td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>`
+                        }
+                    </div>
+                    
+                    <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <h3 style="color: #667eea; margin-bottom: 20px;">⏱️ Time Spent by Topic</h3>
+                        ${sortedTopics.length === 0 ?
+                            '<p style="text-align: center; color: #999; padding: 20px;">No time tracking data yet. Use the timer feature to track study sessions.</p>' :
+                            `<div style="display: flex; flex-direction: column; gap: 15px;">
+                                ${sortedTopics.map(([topic, minutes]) => `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                                        <div style="flex: 1; color: #495057;">${topic}</div>
+                                        <div style="font-weight: 600; color: #667eea; font-size: 1.2em; margin-left: 20px;">${formatMinutes(minutes)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>`
+                        }
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading user analytics:', error);
+                container.innerHTML = `
+                    <div style="background: #fee; color: #c00; padding: 20px; border-radius: 10px;">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
         }
 
         function generateStrengths() {
