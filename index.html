@@ -1541,7 +1541,10 @@
                 setSyncStatus(true);
                 console.log('Saving timer session:', { subject, section, topic, sessionType, durationSeconds });
                 
-                const { error } = await supabaseClient
+                const minutes = Math.round(durationSeconds / 60);
+                
+                // Save to study_sessions table (for backward compatibility)
+                const { error: sessionError } = await supabaseClient
                     .from('study_sessions')
                     .insert({
                         family_id: FAMILY_ID,
@@ -1553,13 +1556,33 @@
                         session_type: sessionType
                     });
 
-                if (error) {
-                    console.error('Error saving session to DB:', error);
-                    throw error;
+                if (sessionError) {
+                    console.error('Error saving to study_sessions:', sessionError);
+                    throw sessionError;
                 }
 
+                // ALSO save to topic_time_tracking table (for analytics)
+                const { error: trackingError } = await supabaseClient
+                    .from('topic_time_tracking')
+                    .insert({
+                        user_id: currentUser.id,
+                        family_id: FAMILY_ID,
+                        email: currentUser.email,
+                        subject: subject,
+                        section: section,
+                        topic: topic,
+                        minutes_spent: minutes,
+                        session_type: sessionType,
+                        tracked_at: new Date().toISOString()
+                    });
+
+                if (trackingError) {
+                    console.error('Error saving to topic_time_tracking:', trackingError);
+                    // Don't throw - study_sessions was saved successfully
+                }
+
+                // Update local progress data
                 const key = getTopicKey(section, topic);
-                const minutes = Math.round(durationSeconds / 60);
                 
                 if (!progressData[subject]) progressData[subject] = {};
                 if (!progressData[subject][key]) {
@@ -1573,7 +1596,7 @@
                 });
                 progressData[subject][key].totalMinutes += minutes;
 
-                console.log('✅ Study session saved successfully');
+                console.log('✅ Study session saved successfully to both tables');
                 setSyncStatus(false);
                 renderTopics();
             } catch (error) {
