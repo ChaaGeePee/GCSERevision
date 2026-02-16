@@ -2689,7 +2689,7 @@
                             onmouseout="this.style.background='#f8f9fa'"
                         >
                             <div>
-                                <strong style="color: #667eea; font-size: 1.1em;">${subject}</strong>
+                                <strong style="color: #667eea; font-size: 1.1em;">${subject.replace(/'/g, "&apos;").replace(/"/g, "&quot;")}</strong>
                                 <span style="color: #999; margin-left: 10px; font-size: 0.9em;">(${subjectCompletions.length} topic${subjectCompletions.length === 1 ? '' : 's'})</span>
                             </div>
                             <span id="arrow_${subjectId}" style="color: #667eea; font-size: 1.2em; transition: transform 0.3s;">${isFirstSubject ? '▼' : '▶'}</span>
@@ -2713,10 +2713,12 @@
                         hour: '2-digit',
                         minute: '2-digit'
                     });
+                    const escapedSection = completion.section.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    const escapedTopic = completion.topic.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                     html += `
                         <tr style="border-bottom: 1px solid #dee2e6;">
-                            <td style="padding: 12px; color: #495057; font-weight: 500;">${completion.section}</td>
-                            <td style="padding: 12px; color: #495057;">${completion.topic}</td>
+                            <td style="padding: 12px; color: #495057; font-weight: 500;">${escapedSection}</td>
+                            <td style="padding: 12px; color: #495057;">${escapedTopic}</td>
                             <td style="padding: 12px; color: #28a745; font-weight: 600;">${completedDate}</td>
                         </tr>
                     `;
