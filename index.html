@@ -2480,15 +2480,56 @@
                     
                     <div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px;">
                         <h3 style="color: #667eea; margin-bottom: 20px;">⏱️ Time Spent by Topic</h3>
-                        ${sortedTopics.length === 0 ?
+                        ${topicTime.length === 0 ?
                             '<p style="text-align: center; color: #999; padding: 20px;">No time tracking data yet. Use the timer feature to track study sessions.</p>' :
-                            `<div style="display: flex; flex-direction: column; gap: 15px;">
-                                ${sortedTopics.map(([topic, minutes]) => `
-                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
-                                        <div style="flex: 1; color: #495057;">${topic}</div>
-                                        <div style="font-weight: 600; color: #667eea; font-size: 1.2em; margin-left: 20px;">${formatMinutes(minutes)}</div>
-                                    </div>
-                                `).join('')}
+                            `<div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #495057;">Topic</th>
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #495057;">Session Type</th>
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #495057;">Start Time</th>
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #495057;">Duration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${topicTime.slice(0, 20).map(session => {
+                                            const topicName = `${session.subject} > ${session.section} > ${session.topic}`;
+                                            const startTime = new Date(session.tracked_at).toLocaleString('en-GB', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            });
+                                            const endTime = new Date(new Date(session.tracked_at).getTime() + (session.minutes_spent * 60000)).toLocaleString('en-GB', {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            });
+                                            const sessionTypeLabel = session.session_type === 'study' ? '📖 Study' : 
+                                                                     session.session_type === 'practice' ? '✏️ Practice' : 
+                                                                     session.session_type === 'revision' ? '🔄 Revision' : '⏱️ Other';
+                                            return `
+                                                <tr style="border-bottom: 1px solid #dee2e6;">
+                                                    <td style="padding: 12px; color: #495057; font-weight: 500;">${topicName}</td>
+                                                    <td style="padding: 12px; color: #495057;">${sessionTypeLabel}</td>
+                                                    <td style="padding: 12px; color: #495057;">${startTime} - ${endTime}</td>
+                                                    <td style="padding: 12px; color: #667eea; font-weight: 600;">${formatMinutes(session.minutes_spent)}</td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                                ${topicTime.length > 20 ? `<p style="text-align: center; color: #999; margin-top: 15px; font-size: 0.9em;">Showing 20 most recent sessions out of ${topicTime.length} total</p>` : ''}
+                                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                                    <h4 style="color: #667eea; margin-bottom: 10px;">📊 Summary by Topic</h4>
+                                    ${sortedTopics.slice(0, 10).map(([topic, minutes]) => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                                            <div style="flex: 1; color: #495057;">${topic}</div>
+                                            <div style="font-weight: 600; color: #667eea; margin-left: 20px;">${formatMinutes(minutes)}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>`
                         }
                     </div>
