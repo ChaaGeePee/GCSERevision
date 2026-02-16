@@ -1555,6 +1555,18 @@
                 
                 if (needsHistoryTracking) {
                     console.log('🎯 Topic marked as green! Tracking completion...', { subject, section, topic, previousStatus });
+                    
+                    // First, delete any existing completion records for this topic (to prevent duplicates)
+                    await supabaseClient
+                        .from('completion_history')
+                        .delete()
+                        .eq('family_id', FAMILY_ID)
+                        .eq('subject', subject)
+                        .eq('section', section)
+                        .eq('topic', topic)
+                        .eq('email', currentUser.email);
+                    
+                    // Now insert the new completion record
                     const { error: historyError } = await supabaseClient
                         .from('completion_history')
                         .insert({
