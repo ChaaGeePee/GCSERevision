@@ -846,6 +846,7 @@
                     <div class="user-email" id="userEmail">Loading...</div>
                     <div class="user-role" id="userRole">Role: Student</div>
                     <button class="logout-btn" onclick="showDebugInfo()" style="background: #2196F3; margin-right: 10px;">🔍 Debug</button>
+                    <button class="logout-btn" onclick="testCompletionHistory()" style="background: #9c27b0; margin-right: 10px;">🧪 Test Completion</button>
                     <button class="logout-btn" onclick="handleLogout()">Logout</button>
                     <span class="sync-status" id="syncStatus">Synced ✓</span>
                 </div>
@@ -2980,6 +2981,48 @@
                 alert('✅ Test entry saved!\n\nPlease:\n1. Log out\n2. Log back in\n3. Check if the test entry is still there\n\nIf it is, your sync is working correctly!');
             } catch (error) {
                 alert(`❌ Sync test failed: ${error.message}`);
+            }
+        }
+
+        async function testCompletionHistory() {
+            if (!FAMILY_ID || !currentUser) {
+                alert('❌ Please log in first');
+                return;
+            }
+            
+            console.log('🧪 Testing completion_history table directly...');
+            
+            try {
+                // Try to insert directly into completion_history
+                const testData = {
+                    user_id: currentUser.id,
+                    family_id: FAMILY_ID,
+                    email: currentUser.email,
+                    subject: 'TEST',
+                    section: 'TEST SECTION',
+                    topic: 'TEST TOPIC - Direct Insert',
+                    status: 'green',
+                    previous_status: null,
+                    completed_at: new Date().toISOString()
+                };
+                
+                console.log('Attempting to insert:', testData);
+                
+                const { data, error } = await supabaseClient
+                    .from('completion_history')
+                    .insert(testData)
+                    .select();
+                
+                if (error) {
+                    console.error('❌ Insert failed:', error);
+                    alert(`❌ Failed to insert into completion_history:\n\n${error.message}\n\nDetails: ${error.details || 'None'}\n\nHint: ${error.hint || 'None'}`);
+                } else {
+                    console.log('✅ Insert successful:', data);
+                    alert('✅ Success! Test record inserted into completion_history.\n\nNow check:\n1. Supabase: SELECT * FROM completion_history;\n2. Analytics tab: Should show this test completion');
+                }
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+                alert(`❌ Test failed: ${error.message}`);
             }
         }
 
