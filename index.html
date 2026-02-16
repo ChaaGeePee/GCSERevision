@@ -1579,6 +1579,39 @@
                     }
                 }
                 
+                // If topic was green and is now being unmarked, remove from completion history
+                if (previousStatus === 'green' && status !== 'green') {
+                    console.log('❌ Topic unmarked from green! Removing from completion history...', { subject, section, topic });
+                    const { error: deleteError } = await supabaseClient
+                        .from('completion_history')
+                        .delete()
+                        .eq('family_id', FAMILY_ID)
+                        .eq('subject', subject)
+                        .eq('section', section)
+                        .eq('topic', topic)
+                        .eq('email', currentUser.email);
+                    
+                    if (deleteError) {
+                        console.error('❌ Error removing from completion history:', deleteError);
+                        // Don't throw - main progress was saved
+                    } else {
+                        console.log('✅ Removed from completion history');
+                    }
+                    
+                    // Also clear completed_at from progress table
+                    await supabaseClient
+                        .from('progress')
+                        .update({ 
+                            completed_at: null,
+                            completed_by: null
+                        })
+                        .eq('family_id', FAMILY_ID)
+                        .eq('subject', subject)
+                        .eq('section', section)
+                        .eq('topic', topic);
+                }
+
+                
                 console.log('✅ Progress saved successfully to cloud:', data);
                 setSyncStatus(false);
                 
