@@ -1497,7 +1497,7 @@
                 // Get current status before updating (for history tracking)
                 const key = getTopicKey(section, topic);
                 const previousStatus = progressData[subject]?.[key]?.status || 'none';
-                console.log(`📝 Status change: "${previousStatus}" → "${status}"`);
+                console.log('Status change: "' + previousStatus + '" -> "' + status + '"');
                 
                 // Prepare the data to save
                 const progressUpdate = {
