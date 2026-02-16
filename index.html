@@ -1494,7 +1494,7 @@
             }
         }
 
-        async function saveTopicProgress(subject, section, topic, status, notes = '') {
+        async function saveTopicProgress(subject, section, topic, status, notes = '', previousStatus = null) {
             if (!FAMILY_ID) {
                 console.error('Cannot save: FAMILY_ID is not set');
                 alert('❌ Error: Not properly logged in. Please refresh and log in again.');
@@ -1511,9 +1511,11 @@
                 setSyncStatus(true);
                 console.log('Saving progress:', { subject, section, topic, status, notes, family_id: FAMILY_ID });
                 
-                // Get current status before updating (for history tracking)
-                const key = getTopicKey(section, topic);
-                const previousStatus = progressData[subject]?.[key]?.status || 'none';
+                // Use the passed previousStatus, or fall back to reading from progressData
+                if (previousStatus === null) {
+                    const key = getTopicKey(section, topic);
+                    previousStatus = progressData[subject]?.[key]?.status || 'none';
+                }
                 console.log('Status change: "' + previousStatus + '" -> "' + status + '"');
                 
                 // Prepare the data to save
@@ -2148,6 +2150,7 @@
             }
 
             const currentStatus = progressData[subject][key].status;
+            const previousStatus = currentStatus; // Capture before we change it
             console.log('🔄 Status change requested:', { subject, topic, currentStatus, requestedStatus: status });
 
             if (currentStatus === status) {
@@ -2162,8 +2165,10 @@
             }
 
             // Save and then refresh analytics if on analytics tab
-            saveTopicProgress(subject, section, topic, status, progressData[subject][key].notes)
+            // Pass previousStatus so saveTopicProgress knows what the old status was
+            saveTopicProgress(subject, section, topic, status, progressData[subject][key].notes, previousStatus)
                 .then(() => {
+                    console.log('✅ Status saved successfully');
                     // Refresh analytics if analytics tab is active
                     const analyticsBtn = document.getElementById('analyticsBtn');
                     if (analyticsBtn && analyticsBtn.classList.contains('active')) {
@@ -2174,10 +2179,12 @@
                             }
                         }, 500); // Small delay to ensure database is updated
                     }
+                })
+                .catch((error) => {
+                    console.error('❌ Error in updateStatus:', error);
                 });
             
-            renderTopics();
-        }
+            renderTopics();        }
 
         // ============= NOTES MODAL =============
         function openNotes(subject, section, topic) {
