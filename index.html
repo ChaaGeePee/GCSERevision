@@ -1582,24 +1582,31 @@
                 // If topic was green and is now being unmarked, remove from completion history
                 if (previousStatus === 'green' && status !== 'green') {
                     console.log('❌ Topic unmarked from green! Removing from completion history...', { subject, section, topic });
-                    const { error: deleteError } = await supabaseClient
+                    console.log('Delete query parameters:', { family_id: FAMILY_ID, subject, section, topic, email: currentUser.email });
+                    
+                    const { data: deletedData, error: deleteError } = await supabaseClient
                         .from('completion_history')
                         .delete()
                         .eq('family_id', FAMILY_ID)
                         .eq('subject', subject)
                         .eq('section', section)
                         .eq('topic', topic)
-                        .eq('email', currentUser.email);
+                        .eq('email', currentUser.email)
+                        .select();
                     
                     if (deleteError) {
                         console.error('❌ Error removing from completion history:', deleteError);
+                        console.error('Delete error details:', deleteError.message, deleteError.details, deleteError.hint);
                         // Don't throw - main progress was saved
                     } else {
-                        console.log('✅ Removed from completion history');
+                        console.log('✅ Removed from completion history. Deleted records:', deletedData);
+                        if (!deletedData || deletedData.length === 0) {
+                            console.warn('⚠️ No records were deleted. The completion might not have existed.');
+                        }
                     }
                     
                     // Also clear completed_at from progress table
-                    await supabaseClient
+                    const { error: clearError } = await supabaseClient
                         .from('progress')
                         .update({ 
                             completed_at: null,
@@ -1609,6 +1616,12 @@
                         .eq('subject', subject)
                         .eq('section', section)
                         .eq('topic', topic);
+                    
+                    if (clearError) {
+                        console.error('❌ Error clearing completion date:', clearError);
+                    } else {
+                        console.log('✅ Cleared completion date from progress table');
+                    }
                 }
 
                 
@@ -2133,7 +2146,21 @@
                 progressData[subject][key].status = status;
             }
 
-            saveTopicProgress(subject, section, topic, status, progressData[subject][key].notes);
+            // Save and then refresh analytics if on analytics tab
+            saveTopicProgress(subject, section, topic, status, progressData[subject][key].notes)
+                .then(() => {
+                    // Refresh analytics if analytics tab is active
+                    const analyticsBtn = document.getElementById('analyticsBtn');
+                    if (analyticsBtn && analyticsBtn.classList.contains('active')) {
+                        console.log('📊 Refreshing analytics after status change...');
+                        setTimeout(() => {
+                            if (currentUser && currentUser.email) {
+                                loadUserAnalytics(currentUser.email);
+                            }
+                        }, 500); // Small delay to ensure database is updated
+                    }
+                });
+            
             renderTopics();
         }
 
