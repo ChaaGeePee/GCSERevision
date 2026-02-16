@@ -1528,8 +1528,15 @@
                     throw error;
                 }
                 
-                // Track completion history if status changed to green (Confident)
-                if (status === 'green' && previousStatus !== 'green') {
+                // Track completion history when:
+                // 1. Status changed to green from another status, OR
+                // 2. Topic is being marked green and doesn't have a completed_at date yet (legacy data)
+                const needsHistoryTracking = status === 'green' && (
+                    previousStatus !== 'green' || 
+                    !data[0]?.completed_at
+                );
+                
+                if (needsHistoryTracking) {
                     console.log('🎯 Topic marked as green! Tracking completion...', { subject, section, topic, previousStatus });
                     const { error: historyError } = await supabaseClient
                         .from('completion_history')
