@@ -1528,6 +1528,7 @@
                 
                 // Track completion history if status changed to green (Confident)
                 if (status === 'green' && previousStatus !== 'green') {
+                    console.log('🎯 Topic marked as green! Tracking completion...', { subject, section, topic, previousStatus });
                     const { error: historyError } = await supabaseClient
                         .from('completion_history')
                         .insert({
@@ -1543,10 +1544,12 @@
                         });
                     
                     if (historyError) {
-                        console.error('Error saving completion history:', historyError);
+                        console.error('❌ Error saving completion history:', historyError);
+                        console.error('Error details:', historyError.message, historyError.details, historyError.hint);
                         // Don't throw - main progress was saved
                     } else {
                         console.log('✅ Completion tracked with date/time!');
+                        console.log('📝 Saved to completion_history:', { subject, section, topic, status: 'green' });
                     }
                 }
                 
@@ -2351,6 +2354,7 @@
                 if (topicTimeError) throw topicTimeError;
                 
                 // Load completion history
+                console.log('📊 Loading completion history for:', email, 'family:', FAMILY_ID);
                 const { data: completions, error: completionsError } = await supabaseClient
                     .from('completion_history')
                     .select('*')
@@ -2360,7 +2364,13 @@
                     .order('completed_at', { ascending: false })
                     .limit(20);
                 
+                console.log('Completions loaded:', completions ? completions.length : 0, 'records');
+                if (completions && completions.length > 0) {
+                    console.log('Sample completion:', completions[0]);
+                }
+                
                 if (completionsError) {
+                    console.error('❌ Error loading completion history:', completionsError);
                     console.warn('Completion history not available:', completionsError);
                 }
                 
