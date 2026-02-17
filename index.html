@@ -2153,15 +2153,15 @@
             saveTopicProgress(subject, section, topic, status, progressData[subject][key].notes, previousStatus)
                 .then(() => {
                     console.log('✅ Status saved successfully');
-                    // Refresh analytics if analytics tab is active
-                    const analyticsBtn = document.getElementById('analyticsBtn');
-                    if (analyticsBtn && analyticsBtn.classList.contains('active')) {
+                    // Refresh analytics if analytics view is active
+                    const analyticsView = document.getElementById('analyticsView');
+                    if (analyticsView && analyticsView.classList.contains('active')) {
                         console.log('📊 Refreshing analytics after status change...');
                         setTimeout(() => {
                             if (currentUser && currentUser.email) {
                                 loadUserAnalytics(currentUser.email);
                             }
-                        }, 500); // Small delay to ensure database is updated
+                        }, 500);
                     }
                 })
                 .catch((error) => {
