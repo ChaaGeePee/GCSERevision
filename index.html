@@ -1581,18 +1581,16 @@
                     
                     if (historyError) {
                         console.error('❌ Error saving completion history:', historyError);
-                        console.error('Error details:', historyError.message, historyError.details, historyError.hint);
-                        // Don't throw - main progress was saved
                     } else {
                         console.log('✅ Completion tracked with date/time!');
                         console.log('📝 Saved to completion_history:', { subject, section, topic, status: 'green' });
                     }
                 }
                 
-                // If topic was green and is now being unmarked, remove from completion history
-                if (previousStatus === 'green' && status !== 'green') {
-                    console.log('❌ Topic unmarked from green! Removing from completion history...', { subject, section, topic });
-                    console.log('Delete query parameters:', { family_id: FAMILY_ID, subject, section, topic, email: currentUser.email });
+                // If status is anything other than green, always remove from completion_history
+                // (handles toggle-off, switching to red/amber, and any edge cases)
+                if (status !== 'green') {
+                    console.log('🗑️ Status not green - removing from completion history:', { subject, section, topic, status });
                     
                     const { data: deletedData, error: deleteError } = await supabaseClient
                         .from('completion_history')
@@ -1606,35 +1604,21 @@
                     
                     if (deleteError) {
                         console.error('❌ Error removing from completion history:', deleteError);
-                        console.error('Delete error details:', deleteError.message, deleteError.details, deleteError.hint);
-                        // Don't throw - main progress was saved
+                    } else if (deletedData && deletedData.length > 0) {
+                        console.log('✅ Removed', deletedData.length, 'record(s) from completion history');
                     } else {
-                        console.log('✅ Removed from completion history. Deleted records:', deletedData);
-                        if (!deletedData || deletedData.length === 0) {
-                            console.warn('⚠️ No records were deleted. The completion might not have existed.');
-                        }
+                        console.log('ℹ️ No completion record to remove');
                     }
                     
-                    // Also clear completed_at from progress table
-                    const { error: clearError } = await supabaseClient
+                    // Clear completed_at from progress table
+                    await supabaseClient
                         .from('progress')
-                        .update({ 
-                            completed_at: null,
-                            completed_by: null
-                        })
+                        .update({ completed_at: null, completed_by: null })
                         .eq('family_id', FAMILY_ID)
                         .eq('subject', subject)
                         .eq('section', section)
                         .eq('topic', topic);
-                    
-                    if (clearError) {
-                        console.error('❌ Error clearing completion date:', clearError);
-                    } else {
-                        console.log('✅ Cleared completion date from progress table');
-                    }
                 }
-
-                
                 console.log('✅ Progress saved successfully to cloud:', data);
                 setSyncStatus(false);
                 
