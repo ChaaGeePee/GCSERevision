@@ -2095,21 +2095,28 @@
                             </div>
                             <div class="topic-controls">
                                 <button class="status-btn red ${topicData.status === 'red' ? 'active' : ''}" 
-                                    onclick="updateStatus('${currentSubject}', '${section.section}', '${item}', 'red')">
+                                    data-subject="${currentSubject}" data-section="${section.section.replace(/"/g, '&quot;')}" data-item="${item.replace(/"/g, '&quot;')}" data-status="red"
+                                    onclick="updateStatusFromBtn(this)">
                                     Need Work
                                 </button>
                                 <button class="status-btn amber ${topicData.status === 'amber' ? 'active' : ''}"
-                                    onclick="updateStatus('${currentSubject}', '${section.section}', '${item}', 'amber')">
+                                    data-subject="${currentSubject}" data-section="${section.section.replace(/"/g, '&quot;')}" data-item="${item.replace(/"/g, '&quot;')}" data-status="amber"
+                                    onclick="updateStatusFromBtn(this)">
                                     Getting There
                                 </button>
                                 <button class="status-btn green ${topicData.status === 'green' ? 'active' : ''}"
-                                    onclick="updateStatus('${currentSubject}', '${section.section}', '${item}', 'green')">
+                                    data-subject="${currentSubject}" data-section="${section.section.replace(/"/g, '&quot;')}" data-item="${item.replace(/"/g, '&quot;')}" data-status="green"
+                                    onclick="updateStatusFromBtn(this)">
                                     Confident
                                 </button>
-                                <button class="action-btn secondary" onclick="openTimer('${currentSubject}', '${section.section}', '${item}')">
+                                <button class="action-btn secondary"
+                                    data-subject="${currentSubject}" data-section="${section.section.replace(/"/g, '&quot;')}" data-item="${item.replace(/"/g, '&quot;')}"
+                                    onclick="openTimerFromBtn(this)">
                                     ⏱️ Timer
                                 </button>
-                                <button class="action-btn" onclick="openNotes('${currentSubject}', '${section.section}', '${item}')">
+                                <button class="action-btn"
+                                    data-subject="${currentSubject}" data-section="${section.section.replace(/"/g, '&quot;')}" data-item="${item.replace(/"/g, '&quot;')}"
+                                    onclick="openNotesFromBtn(this)">
                                     📝 Notes ${topicData.notes ? '✓' : ''}
                                 </button>
                             </div>
@@ -2122,6 +2129,28 @@
 
             container.innerHTML = html;
             filterTopics();
+        }
+
+        function updateStatusFromBtn(btn) {
+            const subject = btn.dataset.subject;
+            const section = btn.dataset.section;
+            const item = btn.dataset.item;
+            const status = btn.dataset.status;
+            updateStatus(subject, section, item, status);
+        }
+
+        function openTimerFromBtn(btn) {
+            const subject = btn.dataset.subject;
+            const section = btn.dataset.section;
+            const item = btn.dataset.item;
+            openTimer(subject, section, item);
+        }
+
+        function openNotesFromBtn(btn) {
+            const subject = btn.dataset.subject;
+            const section = btn.dataset.section;
+            const item = btn.dataset.item;
+            openNotes(subject, section, item);
         }
 
         function updateStatus(subject, section, topic, status) {
