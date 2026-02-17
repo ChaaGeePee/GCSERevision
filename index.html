@@ -28,6 +28,47 @@
             --shadow: 0 4px 24px rgba(0,0,0,0.4);
         }
 
+        /* ===== LIGHT THEME ===== */
+        body.light-theme {
+            --bg: #f0f2f7;
+            --bg2: #ffffff;
+            --bg3: #f7f8fc;
+            --border: #e2e6ef;
+            --border2: #c8d0e0;
+            --text: #1a1f2e;
+            --text2: #5a6478;
+            --text3: #9aa0b0;
+            --accent: #4f6ef7;
+            --accent2: #7c3aed;
+            --green: #059669;
+            --green-bg: rgba(5,150,105,0.08);
+            --amber: #d97706;
+            --amber-bg: rgba(217,119,6,0.08);
+            --red: #dc2626;
+            --red-bg: rgba(220,38,38,0.08);
+            --shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+
+        /* ===== THEME TOGGLE BUTTON ===== */
+        .theme-toggle {
+            padding: 7px 12px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+            margin-right: 8px;
+            color: var(--text2);
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -472,6 +513,11 @@
         .status-bar.amber { background: var(--amber); }
         .status-bar.red { background: var(--red); }
 
+        /* Progress bar legend below each subject */
+        .bar-legend { display: flex; gap: 12px; margin-top: 6px; font-size: 0.75em; color: var(--text3); }
+        .bar-legend span { display: flex; align-items: center; gap: 4px; }
+        .bar-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
         /* ===== MODAL ===== */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
         .modal.active { display: block; }
@@ -606,6 +652,7 @@
                 <div class="user-info">
                     <div class="user-email" id="userEmail">Loading...</div>
                     <div class="user-role" id="userRole">Role: Student</div>
+                    <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">🌙 Dark</button>
                     <button class="logout-btn" onclick="showDebugInfo()" style="background: rgba(33,150,243,0.15); color: #60a5fa; border: 1px solid rgba(33,150,243,0.3); margin-right: 10px;">🔍 Debug</button>
                     <button class="logout-btn" onclick="handleLogout()">Logout</button>
                     <span class="sync-status" id="syncStatus">Synced ✓</span>
@@ -1129,6 +1176,7 @@
         async function showApp() {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('appContainer').classList.add('show');
+            initTheme();
             
             // Track login session
             if (currentUser && FAMILY_ID) {
@@ -1874,7 +1922,7 @@
                         });
                         const completedBy = topicData.completed_by || 'Unknown';
                         completionInfo = `
-                            <div style="font-size: 0.85em; color: #28a745; margin-top: 5px;">
+                            <div style="font-size: 0.78em; color: var(--green); margin-top: 5px; font-weight: 500;">
                                 ✅ Completed: ${formattedDate}
                                 ${completedBy !== currentUser?.email ? ` by ${completedBy.split('@')[0]}` : ''}
                             </div>
@@ -2218,13 +2266,19 @@
 
                 row.innerHTML = `
                     <div class="subject-row-header">
-                        <h4>${subject.name} ${stats.priority > 0 ? `<span style="font-size:0.75em; color:#f44336; margin-left:6px;">🚩 ${stats.priority}</span>` : ''}</h4>
-                        <span class="subject-percentage">${stats.percentage}% Complete</span>
+                        <h4>${subject.name} ${stats.priority > 0 ? `<span style="font-size:0.75em; color:var(--red); margin-left:6px;">🚩 ${stats.priority}</span>` : ''}</h4>
+                        <span class="subject-percentage">${stats.percentage}%</span>
                     </div>
-                    <div class="status-bars">
-                        ${greenWidth > 0 ? `<div class="status-bar green" style="width: ${greenWidth}%">${stats.green}</div>` : ''}
-                        ${amberWidth > 0 ? `<div class="status-bar amber" style="width: ${amberWidth}%">${stats.amber}</div>` : ''}
-                        ${redWidth > 0 ? `<div class="status-bar red" style="width: ${redWidth}%">${stats.red}</div>` : ''}
+                    <div class="status-bars" style="background: var(--border); border-radius: 10px; height: 10px;">
+                        ${greenWidth > 0 ? `<div class="status-bar green" style="width: ${greenWidth}%"></div>` : ''}
+                        ${amberWidth > 0 ? `<div class="status-bar amber" style="width: ${amberWidth}%"></div>` : ''}
+                        ${redWidth > 0 ? `<div class="status-bar red" style="width: ${redWidth}%"></div>` : ''}
+                    </div>
+                    <div class="bar-legend">
+                        ${stats.green > 0 ? `<span><span class="bar-dot" style="background:var(--green)"></span>${stats.green} confident</span>` : ''}
+                        ${stats.amber > 0 ? `<span><span class="bar-dot" style="background:var(--amber)"></span>${stats.amber} getting there</span>` : ''}
+                        ${stats.red > 0 ? `<span><span class="bar-dot" style="background:var(--red)"></span>${stats.red} need work</span>` : ''}
+                        ${stats.total - stats.green - stats.amber - stats.red > 0 ? `<span><span class="bar-dot" style="background:var(--border2)"></span>${stats.total - stats.green - stats.amber - stats.red} not started</span>` : ''}
                     </div>
                 `;
 
@@ -3129,6 +3183,26 @@
             }
         }
 
+        // ============= THEME TOGGLE =============
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.getElementById('themeToggleBtn');
+            const isLight = body.classList.toggle('light-theme');
+            localStorage.setItem('gcse_theme', isLight ? 'light' : 'dark');
+            btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('gcse_theme');
+            const btn = document.getElementById('themeToggleBtn');
+            if (saved === 'light') {
+                document.body.classList.add('light-theme');
+                if (btn) btn.textContent = '🌙 Dark';
+            } else {
+                if (btn) btn.textContent = '☀️ Light';
+            }
+        }
+
         // ============= EXAM COUNTDOWN =============
         function saveExamDate(dateStr) {
             localStorage.setItem('gcse_exam_date', dateStr);
@@ -3263,9 +3337,10 @@
             });
         }
 
-        // Init countdown on page load
+        // Init countdown and theme on page load
         document.addEventListener('DOMContentLoaded', () => {
             updateExamCountdown();
+            initTheme();
         });
     </script>
 </body>
