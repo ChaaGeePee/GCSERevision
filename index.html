@@ -1600,14 +1600,15 @@
                         .eq('section', section)
                         .eq('topic', topic)
                         .eq('email', currentUser.email)
+                        .eq('user_id', currentUser.id)
                         .select();
                     
                     if (deleteError) {
-                        console.error('❌ Error removing from completion history:', deleteError);
+                        console.error('❌ Delete error:', deleteError.message, deleteError.details, deleteError.hint);
                     } else if (deletedData && deletedData.length > 0) {
                         console.log('✅ Removed', deletedData.length, 'record(s) from completion history');
                     } else {
-                        console.log('ℹ️ No completion record to remove');
+                        console.warn('⚠️ Delete ran but removed 0 records - possible RLS policy blocking delete');
                     }
                     
                     // Clear completed_at from progress table
