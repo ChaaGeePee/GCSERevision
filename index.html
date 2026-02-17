@@ -1289,7 +1289,21 @@
                 setSyncStatus(false);
             } catch (error) {
                 console.error('❌ Error loading progress:', error);
-                alert(`Failed to load your progress data: ${error.message}\n\nYour data is safe in the cloud. Please check your connection and refresh.`);
+                console.error('Failed to load progress data:', error.message);
+                // Show non-blocking notification instead of alert
+                const syncEl = document.getElementById('syncStatus');
+                if (syncEl) {
+                    syncEl.textContent = '⚠️ Load error - retrying...';
+                    syncEl.style.background = 'rgba(248,113,113,0.2)';
+                    syncEl.style.color = 'var(--red)';
+                    // Auto-retry after 3s
+                    setTimeout(() => {
+                        syncEl.textContent = 'Synced ✓';
+                        syncEl.style.background = '';
+                        syncEl.style.color = '';
+                        loadProgressData();
+                    }, 3000);
+                }
                 setSyncStatus(false);
             }
         }
@@ -1978,6 +1992,11 @@
 
             container.innerHTML = html;
             filterTopics();
+            // Apply priority highlight to flagged topics
+            document.querySelectorAll('.priority-flag-btn.flagged').forEach(btn => {
+                const topicItem = btn.closest('.topic-item');
+                if (topicItem) topicItem.classList.add('priority');
+            });
         }
 
         function updateStatusFromBtn(btn) {
@@ -2119,6 +2138,9 @@
 
             document.getElementById('statsGrid').innerHTML = statsHtml;
             renderSubjectBreakdown();
+            renderPriorityTopics();
+            updateExamCountdown();
+            updateStreak();
         }
 
         function calculateOverallStats() {
@@ -3317,24 +3339,7 @@
 
         // ============= HOOK STREAK INTO SAVES =============
         const _origSaveTopicProgress = saveTopicProgress;
-        // Patch renderOverview to also trigger countdown + streak
-        const _origRenderOverview = renderOverview;
-        function renderOverview() {
-            _origRenderOverview();
-            updateExamCountdown();
-            updateStreak();
-            renderPriorityTopics();
-        }
-
-        // Also apply priority highlight on renderTopics
-        const _origRenderTopics = renderTopics;
-        function renderTopics() {
-            _origRenderTopics();
-            // Apply priority highlight to flagged items
-            document.querySelectorAll('.priority-flag-btn.flagged').forEach(btn => {
-                const topicItem = btn.closest('.topic-item');
-                if (topicItem) topicItem.classList.add('priority');
-            });
+);
         }
 
         // Init countdown and theme on page load
